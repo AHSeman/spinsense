@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SpinSense · Washer 1</title>
+<style>
+  :root { --free:#1a9e55; --run:#2563eb; --done:#e8790c; --off:#8a8f98; --ink:#1d2129; --quiet:#5f6673; --line:#e3e6ea; --bg:#f6f7f9; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif; color:var(--ink); background:var(--bg); }
+  header { background:#fff; border-bottom:1px solid var(--line); padding:14px 18px; display:flex; align-items:baseline; gap:10px; }
+  header h1 { font-size:20px; margin:0; } header span { color:var(--quiet); font-size:13px; }
+  nav { display:flex; gap:4px; padding:10px 12px 0; overflow-x:auto; }
+  nav button { border:0; background:none; padding:10px 14px; font-size:15px; color:var(--quiet); border-bottom:3px solid transparent; cursor:pointer; white-space:nowrap; }
+  nav button.on { color:var(--ink); border-bottom-color:var(--ink); font-weight:600; }
+  main { max-width:720px; margin:0 auto; padding:14px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:14px; }
+  .hide { display:none; }
+  .big { display:flex; align-items:center; gap:18px; }
+  .dot { width:72px; height:72px; border-radius:50%; flex:none; background:var(--off); }
+  .label { font-size:30px; font-weight:700; }
+  .sub { color:var(--quiet); font-size:14px; margin-top:4px; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px; }
+  .stat { background:var(--bg); border-radius:10px; padding:10px; } .stat b { display:block; font-size:20px; } .stat small { color:var(--quiet); }
+  button.main { background:var(--ink); color:#fff; border:0; border-radius:10px; padding:12px 16px; font-size:15px; cursor:pointer; }
+  button.main:disabled { opacity:.4; cursor:default; }
+  a.tg { display:inline-block; background:#229ed9; color:#fff; text-decoration:none; border-radius:10px; padding:12px 16px; font-weight:600; margin:4px 6px 4px 0; }
+  input[type=email], input[type=password], input[type=text] { width:100%; padding:11px; font-size:15px; border:1px solid var(--line); border-radius:8px; }
+  label.chk { display:block; margin:10px 0; }
+  .msg { margin-top:10px; font-size:14px; color:var(--quiet); }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th, td { padding:6px 4px; text-align:center; border-bottom:1px solid var(--line); }
+  .heat td { border:2px solid #fff; border-radius:4px; font-size:11px; }
+  .legend { font-size:12px; color:var(--quiet); margin-top:8px; }
+  .owner { margin-top:6px; font-size:14px; font-weight:600; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; } .row input { flex:1 1 200px; }
+  .or { color:var(--quiet); font-size:13px; margin:10px 0 6px; }
+  .token { border:2px solid var(--ink); }
+  h2 { font-size:17px; margin:0 0 10px; }
+</style>
+</head>
+<body>
+<header><h1>SpinSense</h1><span>W3 dorm · Washer 1</span></header>
+<nav>
+  <button data-tab="status" class="on">Status</button>
+  <button data-tab="best">Best time</button>
+  <button data-tab="notify">Notify me</button>
+  <button data-tab="admin">Admin</button>
+</nav>
+<main>
+  <!-- STATUS -->
+  <section id="status">
+    <div class="card token hide" id="tokenCard">
+      <h2 id="tokenTitle"></h2>
+      <div class="msg" id="tokenText"></div>
+      <p><button class="main" id="tokenBtn"></button></p>
+      <div class="msg" id="tokenMsg"></div>
+    </div>
+    <div class="card">
+      <div class="big"><div class="dot" id="dot"></div>
+        <div><div class="label" id="label">Loading…</div><div class="sub" id="sub"></div><div class="owner" id="owner"></div></div></div>
+      <div class="grid">
+        <div class="stat"><small>Running for</small><b id="elapsed">—</b></div>
+        <div class="stat"><small>Time left (est.)</small><b id="left">—</b></div>
+        <div class="stat"><small>Typical cycle</small><b id="typical">—</b></div>
+      </div>
+    </div>
+    <div class="card hide" id="claimCard">
+      <h2>Is this your laundry?</h2>
+      <div class="msg">Claim this wash: you get a message when it's done, and only you can mark it collected.</div>
+      <div class="tgOnly hide"><p><a class="tg" id="tgClaim" href="#">Claim with Telegram</a></p>
+      <div class="or">or with email</div></div>
+      <div class="row"><input type="email" id="claimEmail" placeholder="you@example.com"><button class="main" id="claimBtn">Claim with email</button></div>
+      <div class="msg" id="claimMsg"></div>
+    </div>
+    <div class="card hide" id="collectCard">
+      <h2>Picked up your laundry?</h2>
+      <div id="collectOpen">
+        <div class="msg">Nobody claimed this wash. Type your name and tap Collected after you empty the washer.</div>
+        <div class="row" style="margin-top:8px"><input type="text" id="collectName" placeholder="Your name"><button class="main" id="collected">Collected</button></div>
+      </div>
+      <div class="msg" id="collectOwned"></div>
+      <div class="msg" id="collectedMsg"></div>
+    </div>
+  </section>
+
+  <!-- BEST TIME -->
+  <section id="best" class="hide">
+    <div class="card">
+      <h2>Best time to wash (last 7 days)</h2>
+      <div id="heat">Loading…</div>
+      <div class="legend">% of time the washer was busy. Green = usually free. ★ = the 3 quietest slots.</div>
+    </div>
+    <div class="card"><h2>Recent cycles</h2><div id="cycles">Loading…</div></div>
+  </section>
+
+  <!-- NOTIFY -->
+  <section id="notify" class="hide">
+    <div class="card">
+      <h2>Waiting for the washer?</h2>
+      <div class="msg">Get one message when Washer 1 becomes free. (Your own wash? Claim it on the Status tab instead.)</div>
+      <div class="tgOnly hide"><p><a class="tg" id="tgFree" href="#">Telegram me when it's free</a></p>
+      <div class="or">or by email</div></div>
+      <div class="row"><input type="email" id="email" placeholder="you@example.com"><button class="main" id="subBtn">Email me when it's free</button></div>
+      <div class="msg" id="subMsg">Your email is only used for SpinSense alerts.</div>
+    </div>
+    <div class="card tgOnly hide"><h2>Telegram bot</h2><div class="msg">Buttons for status, claiming your wash, free alerts and Collected: <a id="tgBot" href="#">open the SpinSense bot</a>.</div></div>
+  </section>
+
+  <!-- ADMIN -->
+  <section id="admin" class="hide">
+    <div class="card" id="loginCard">
+      <h2>Team admin</h2>
+      <input type="password" id="pw" placeholder="Admin password">
+      <p><button class="main" id="loginBtn">Open</button></p>
+      <div class="msg" id="loginMsg"></div>
+    </div>
+    <div id="adminBody" class="hide">
+      <div class="card">
+        <h2>Send a command to the box</h2>
+        <input type="text" id="cmd" placeholder="e.g. SETV 0.25">
+        <p><button class="main" id="cmdBtn">Send</button></p>
+        <div class="msg">SETV x vibration (g) · SETP x spin (g) · SETS x sound · SETQ n quiet s (30–100) · COLLECTED · DONE · RESET · DEFAULTS · STATUS · DEMO ON / DEMO OFF</div>
+        <div class="msg" id="cmdMsg"></div>
+      </div>
+      <div class="card"><h2>Users</h2><div id="users"></div></div>
+      <div class="card"><h2>Last uploads</h2><div id="feed"></div></div>
+      <div class="card"><h2>State changes</h2><div id="events"></div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+// Server = the Google Apps Script web app (the /exec URL). Only this line changes if you redeploy as a NEW deployment.
+const API = 'https://script.google.com/macros/s/AKfycbzEeOtD-rZtE4lR72eHrF3XNzWYrgfFKFCJdipXjezlQYsks_k6qiRl0J8jZ4tcBQuYmg/exec';
+async function unwrap(r) {
+  if (!r.ok) throw new Error('Server error ' + r.status);
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'Server error');
+  return j.result;
+}
+const apiGet = name => fetch(API + '?api=' + name + '&t=' + Date.now()).then(unwrap);
+// text/plain keeps it a "simple" request (no CORS preflight, which Apps Script can't answer)
+const apiPost = (name, ...args) => fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+  body: JSON.stringify({ api: name, args: args }) }).then(unwrap);
+const netErr = e => (e && e.message === 'Failed to fetch') ? 'No connection to the server. Check your internet and try again.' : (e && e.message) || String(e);
+
+const COLORS = { Free:'var(--free)', Running:'var(--run)', Done:'var(--done)', Offline:'var(--off)' };
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const esc = s => String(s === null || s === undefined ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $ = id => document.getElementById(id);
+let bestLoaded = false;
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('main section').forEach(s => s.classList.toggle('hide', s.id !== b.dataset.tab));
+  if (b.dataset.tab === 'best' && !bestLoaded) loadBest();
+});
+
+function loadStatus() {
+  apiGet('status').then(s => {
+    $('label').textContent = s.label;
+    $('dot').style.background = COLORS[s.label] || COLORS.Offline;
+    $('sub').textContent = s.online ? 'Updated ' + s.updated + (s.doneSince ? ' · done since ' + s.doneSince : '')
+                                    : 'No data for over 2 minutes (last ' + s.updated + ')';
+    $('elapsed').textContent = s.state === 1 ? Math.round(s.elapsedMin) + ' min' : '—';
+    $('left').textContent = s.timeLeftMin === null ? '—' : (s.timeLeftMin <= 1 ? 'any minute' : s.timeLeftMin + ' min');
+    $('typical').textContent = s.typicalCycleMin === null ? '—' : Math.round(s.typicalCycleMin) + ' min';
+    $('owner').textContent = s.owner ? 'Claimed by ' + s.owner : (s.canClaim ? 'Not claimed yet' : '');
+    $('claimCard').classList.toggle('hide', !s.canClaim);
+    $('collectCard').classList.toggle('hide', !(s.online && s.state === 2));
+    $('collectOpen').classList.toggle('hide', !!s.owner);
+    $('collectOwned').textContent = s.owner ? 'This wash belongs to ' + s.owner +
+      '. Only they can mark it collected - with the Collected button in Telegram or the link in their Done email.' : '';
+  }).catch(e => { $('label').textContent = 'Error'; $('dot').style.background = COLORS.Offline; $('sub').textContent = netErr(e); });
+}
+
+function loadBest() {
+  apiGet('insights').then(d => {
+    bestLoaded = true;
+    const star = (day, slot) => d.quiet.some(q => q.d === day && q.s === slot) ? '★' : '';
+    let h = '<table class="heat"><tr><th></th>' + DAYS.map(x => '<th>' + x + '</th>').join('') + '</tr>';
+    for (let slot = 0; slot < 12; slot++) {
+      h += '<tr><th>' + String(slot * 2).padStart(2, '0') + '–' + String(slot * 2 + 2).padStart(2, '0') + '</th>';
+      for (let day = 0; day < 7; day++) {
+        const v = d.pct[day][slot];
+        const bg = v === null ? '#f0f1f3' : 'hsl(' + Math.round(130 - 1.3 * v) + ',65%,' + (85 - v * 0.25) + '%)';
+        h += '<td style="background:' + bg + '">' + (v === null ? '' : v + '%' + star(day, slot)) + '</td>';
+      }
+      h += '</tr>';
+    }
+    $('heat').innerHTML = h + '</table>';
+    $('cycles').innerHTML = d.cycles.length
+      ? '<p class="sub">Median cycle: <b>' + Math.round(d.medianMin) + ' min</b> over ' + d.count + ' cycles</p><table><tr><th>Finished</th><th>Length</th></tr>' +
+        d.cycles.map(c => '<tr><td>' + esc(c.time) + '</td><td>' + esc(c.min) + ' min</td></tr>').join('') + '</table>'
+      : 'No finished cycles yet.';
+  }).catch(e => $('heat').textContent = 'Error: ' + netErr(e));
+}
+
+$('collected').onclick = () => {
+  $('collected').disabled = true; $('collectedMsg').textContent = 'Sending…';
+  apiPost('markCollected', $('collectName').value)
+    .then(m => { $('collectedMsg').textContent = m; $('collected').disabled = false; setTimeout(loadStatus, 25000); })
+    .catch(e => { $('collectedMsg').textContent = netErr(e); $('collected').disabled = false; });
+};
+
+$('claimBtn').onclick = () => {
+  $('claimMsg').textContent = 'Saving…';
+  apiPost('claimEmail', $('claimEmail').value)
+    .then(m => { $('claimMsg').textContent = m; loadStatus(); })
+    .catch(e => $('claimMsg').textContent = netErr(e));
+};
+
+$('subBtn').onclick = () => {
+  $('subMsg').textContent = 'Saving…';
+  apiPost('subscribeEmail', $('email').value, false, true)
+    .then(m => $('subMsg').textContent = m)
+    .catch(e => $('subMsg').textContent = netErr(e));
+};
+
+// Personal links from emails/Telegram: ?collect=<token> or ?undo=<token>
+(function () {
+  const q = new URLSearchParams(location.search);
+  const mode = q.get('collect') ? 'collect' : (q.get('undo') ? 'undo' : '');
+  const token = q.get('collect') || q.get('undo');
+  if (!mode || !token) return;
+  $('tokenCard').classList.remove('hide');
+  if (mode === 'collect') {
+    $('tokenTitle').textContent = 'Mark your laundry as collected?';
+    $('tokenText').textContent = 'Only tap this after you have emptied Washer 1.';
+    $('tokenBtn').textContent = 'Yes, I collected it';
+  } else {
+    $('tokenTitle').textContent = 'Put Washer 1 back to Done?';
+    $('tokenText').textContent = 'Use this if your laundry is still inside but someone marked it collected.';
+    $('tokenBtn').textContent = 'Undo - my laundry is still inside';
+  }
+  $('tokenBtn').onclick = () => {
+    $('tokenBtn').disabled = true; $('tokenMsg').textContent = 'Sending…';
+    const done = m => { $('tokenMsg').textContent = m; setTimeout(loadStatus, 25000); };
+    const fail = e => { $('tokenMsg').textContent = netErr(e); $('tokenBtn').disabled = false; };
+    apiPost(mode === 'collect' ? 'collectWithToken' : 'undoCollected', token).then(done).catch(fail);
+  };
+})();
+
+function table(rows, cols) {
+  if (!rows.length) return 'Nothing yet.';
+  return '<table><tr>' + cols.map(c => '<th>' + c[1] + '</th>').join('') + '</tr>' +
+    rows.map(r => '<tr>' + cols.map(c => '<td>' + esc(r[c[0]]) + '</td>').join('') + '</tr>').join('') + '</table>';
+}
+
+function loadAdmin() {
+  $('loginMsg').textContent = 'Checking…';
+  apiPost('adminData', $('pw').value).then(d => {
+    $('loginMsg').textContent = '';
+    $('loginCard').classList.add('hide'); $('adminBody').classList.remove('hide');
+    $('users').textContent = d.users.total + ' signed up · ' + d.users.waitingDone + ' waiting for Done · ' + d.users.waitingFree + ' waiting for Free';
+    $('feed').innerHTML = table(d.feed, [['time','Time'],['state','State'],['vib','Vib'],['max','Max'],['snd','Sound'],['rssi','RSSI'],['err','Errors']]);
+    $('events').innerHTML = table(d.events, [['time','Time'],['from','From'],['to','To'],['min','Cycle min'],['source','Source'],['by','By']]);
+  }).catch(e => $('loginMsg').textContent = netErr(e));
+}
+$('loginBtn').onclick = loadAdmin;
+$('cmdBtn').onclick = () => {
+  $('cmdMsg').textContent = 'Sending…';
+  apiPost('adminCommand', $('pw').value, $('cmd').value)
+    .then(m => $('cmdMsg').textContent = m)
+    .catch(e => $('cmdMsg').textContent = netErr(e));
+};
+
+// Telegram buttons appear only when the bot is set up on the server
+apiGet('config').then(c => {
+  if (!c.tgOn) return;
+  $('tgClaim').href = c.tgClaim; $('tgFree').href = c.tgFree; $('tgBot').href = c.tgBot;
+  document.querySelectorAll('.tgOnly').forEach(x => x.classList.remove('hide'));
+}).catch(() => {});
+$('pw').onkeydown = e => { if (e.key === 'Enter') loadAdmin(); };
+
+loadStatus();
+setInterval(() => { if (!document.hidden) loadStatus(); }, 20000);
+</script>
+</body>
+</html>
